@@ -1,0 +1,12 @@
+version: '3'
+services:
+  go-kms:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+    image: go-kms
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/google-account.json
+    volumes: 
+      - $PWD/README.md:/README.md
+      - $PWD/secrets/cterminal-kms-adamplansky-dev-kms.json:/secrets/google-account.json
