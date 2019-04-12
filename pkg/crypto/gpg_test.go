@@ -3,8 +3,6 @@ package crypto
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -12,13 +10,14 @@ import (
 )
 
 var (
-	plaintextFile      = "file.txt"
-	ciphertextFile     = "file_enc.txt.gpg"
-	plaintextString    = "1"
+	// plaintextFile      = "hello.txt"
+	plaintextString = "hello"
+	// ciphertextFile     = "hello.txt.gpg"
 	ciphertextString   = ""
 	pubFilename        = "alice.asc"
 	privFilename       = "alice-priv.asc"
 	privArmoryFilename = "alice-priv-armor.asc"
+	passphraseString   = "password"
 	pubArmorKey        = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mI0EXKG1jgEEAMoYJ+ID5dww0y8u5eOW28ZuoypreviYVHX7Qq1E6L/42birfqNt
@@ -76,84 +75,75 @@ nrFluMWDmEVC6rgQZwN1gKawh+DUxFIm8pM++M0YI+iO5s1TAOzZVxc0y1VX13jN
 -----END PGP PRIVATE KEY BLOCK-----`
 )
 
-func TestGpgEncryptFileSymmetric(t *testing.T) {
-	passphrase := []byte("password")
-
-	fp, err := os.Open(plaintextFile)
+// cat hello.txt |  tr -d \\n | base64
+func TestGpgEncryptStringSymmetric(t *testing.T) {
+	passphrase := []byte(passphraseString)
+	fp := bytes.NewBufferString(plaintextString)
+	fc := bytes.NewBufferString("")
+	err := GpgEncryptSymmetric(fp, fc, passphrase)
 	if err != nil {
-		t.Errorf("unable to create file %s %s\n", plaintextFile, err)
+		t.Errorf("unable to encrypt symmetric %s \n", err)
 	}
-	defer fp.Close()
-	fc, err := os.Create(ciphertextFile)
-	if err != nil {
-		t.Errorf("unable to create file %s %s\n", ciphertextFile, err)
-	}
-	defer fc.Close()
-
-	err = GpgEncryptSymmetric(fp, fc, passphrase)
-	if err != nil {
-		t.Errorf("unable to encrypt file %s %s\n", plaintextFile, err)
-	}
-	if _, err := os.Stat(ciphertextFile); os.IsNotExist(err) {
-		t.Errorf("unable to encrypt file %s\n", plaintextFile)
+	if len(fc.String()) < 1 {
+		t.Errorf("symmetric encrypt failed %s\n", fc.String())
 	}
 }
+func TestGpgDecryptSymmetricString(t *testing.T) {
+	passphrase := []byte(passphraseString)
+	symmetricGpgTextBase64 := "wx4EBwMIEq4Yod9IW3pg4NX4O/wVtcuj7Ndr8J2U9gXS4AHkRv2mpwVPrtcyj1bI9K/lsOGNBuBC4Gvhdrjg3eJd6LKW4NfiGro3tuCK4A/gCOQmUm9bl+MqpaQ7TI5ds51r4u2D8/Th65YA"
+	sDec, _ := base64.StdEncoding.DecodeString(symmetricGpgTextBase64)
+	fp := bytes.NewBufferString("")
+	fc := bytes.NewBuffer(sDec)
 
-func TestGpgDecryptFileSymmetric(t *testing.T) {
-	passphrase := []byte("password")
-
-	fc, err := os.Open(ciphertextFile)
-	if err != nil {
-		t.Errorf("unable to open file %s %s\n", ciphertextFile, err)
-	}
-
-	plaintextFile := "file_decrypted.txt"
-	fp, err := os.Create(plaintextFile)
-	if err != nil {
-		t.Errorf("unable to create file %s %s\n", plaintextFile, err)
-	}
-	err = GpgDecryptSymmetric(fc, fp, passphrase)
+	err := GpgDecryptSymmetric(fc, fp, passphrase)
 	if err != nil {
 		t.Errorf("unable to decrypt file %s\n", err)
 	}
-	if _, err := os.Stat(plaintextFile); os.IsNotExist(err) {
-		t.Errorf("unable to decrypt file %s\n", plaintextFile)
+	if len(fp.String()) < 1 {
+		t.Errorf("symmetric decrypt failed %s\n", fp.String())
+	}
+
+	want := plaintextString
+	got := fp.String()
+	if fp.String() != plaintextString {
+		t.Errorf("unable to decrypt string want: %s\n got: %s", want, got)
 	}
 }
-
-func TestGpgDecryptFileSymmetric2(t *testing.T) {
-	passphrase := []byte("password")
-
-	fp, err := os.Open(plaintextFile)
+func TestGpgEncryptDecryptSymmetric(t *testing.T) {
+	passphrase := []byte(passphraseString)
+	fp := bytes.NewBufferString(plaintextString)
+	fc := bytes.NewBufferString("")
+	err := GpgEncryptSymmetric(fp, fc, passphrase)
 	if err != nil {
-		t.Errorf("unable to create file %s %s\n", plaintextFile, err)
+		t.Errorf("unable to encrypt symmetric %s \n", err)
 	}
-	defer fp.Close()
-	fc, err := os.Create(ciphertextFile)
-	if err != nil {
-		t.Errorf("unable to create file %s %s\n", ciphertextFile, err)
+	fd := bytes.NewBufferString("")
+	if len(fc.String()) < 1 {
+		t.Errorf("symmetric encrypt failed %s\n", fc.String())
 	}
-	defer fc.Close()
 
-	err = GpgEncryptSymmetric(fp, fc, passphrase)
-	_, err = fc.Seek(0, 0)
+	// echo -n 'wx4EBwMIEq4Yod9IW3pg4NX4O/wVtcuj7Ndr8J2U9gXS4AHkRv2mpwVPrtcyj1bI9K/lsOGNBuBC4Gvhdrjg3eJd6LKW4NfiGro3tuCK4A/gCOQmUm9bl+MqpaQ7TI5ds51r4u2D8/Th65YA' | base64 -D > file_decrypted.gpg
+	// x := fc.String()
+	// sDec := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s", x)))
+	// fmt.Printf("sDec: [%s]\n", sDec)
 
-	plaintextFile = "file_decrypted.txt"
-	fp, err = os.Create(plaintextFile)
-	if err != nil {
-		t.Errorf("unable to create file %s %s\n", plaintextFile, err)
-	}
-	err = GpgDecryptSymmetric(fc, fp, passphrase)
+	err = GpgDecryptSymmetric(fc, fd, passphrase)
 	if err != nil {
 		t.Errorf("unable to decrypt file %s\n", err)
 	}
-	if _, err := os.Stat(plaintextFile); os.IsNotExist(err) {
-		t.Errorf("unable to decrypt file %s\n", plaintextFile)
+	if len(fd.String()) < 1 {
+		t.Errorf("symmetric decrypt failed %s\n", fd.String())
+	}
+
+	want := plaintextString
+	got := fd.String()
+	if fd.String() != plaintextString {
+		t.Errorf("unable to decrypt string want: %s\n got: %s", want, got)
 	}
 }
 
 func TestGpgEncryptStringSymetric(t *testing.T) {
-	passphrase := []byte("password")
+	passphrase := []byte(passphraseString)
 
 	pBuf := bytes.NewBufferString(plaintextString)
 	cBuf := bytes.NewBufferString(ciphertextString)
@@ -172,7 +162,7 @@ func TestGpgEncryptStringSymetric(t *testing.T) {
 func TestGpgDecryptStringSymetric(t *testing.T) {
 	ciphertextString := "wx4EBwMI9lOpQbkJG39gXG37o6MkRH4pBX7XgUQL52vS4AHkmiXx67nyXSbSzyFU3jLx/uGQxuCy4DvhgNngRuJkw7a+4MvgxuCw5OqeRURBsM2jAB+3/g6AZMri2WER0eGrXwA="
 	plaintextString := "1"
-	passphrase := []byte("password")
+	passphrase := []byte(passphraseString)
 	x, _ := base64.StdEncoding.DecodeString(ciphertextString)
 	cBuf := bytes.NewBuffer(x)
 	pBuf := bytes.NewBufferString("")
@@ -186,10 +176,9 @@ func TestGpgDecryptStringSymetric(t *testing.T) {
 }
 
 func TestReadEntity(t *testing.T) {
-	ascFilename := "alice.asc"
-	f, err := os.Open(ascFilename)
+	f, err := os.Open(pubFilename)
 	if err != nil {
-		t.Errorf("unable to open file: %s %s", ascFilename, err)
+		t.Errorf("unable to open file: %s %s", pubFilename, err)
 	}
 	defer f.Close()
 	_, err = ReadEntity(f)
@@ -225,9 +214,9 @@ func TestReadKeyringFromString(t *testing.T) {
 		t.Errorf("entity doesn't exist %#v \n", entity)
 	}
 }
+
 func TestEncryptFromString(t *testing.T) {
 	plaintexString := "hello"
-	encryptedString := "wYwDJvpFsMUbEcoBBADGVjJ9O8s5HSDwseG8tUxzgy2BtKuUvuVZHZeeZPQMqYFl9IMiKTrLv0n3jScOZs6rxUY/f8w4tXBffSje/66hIHHPJlN2pmxBDmSUl0y9DpbPDoDVjPIf9VbwbJz4lzx0vam8kn66TLC5rRsjWJvh0S7OKXl3okhKFBARJfDBgdLgAeRsGAI8XyfWlIsNoaZS6uAV4a+u4Prg9OGvs+BK4k4glU7gyuKd1X/84Ffhivrg7+SdsiPqEaeBhwmZWkDB/cre4owbkO7hmGkA"
 	recipient, err := ReadEntity(bytes.NewBufferString(pubArmorKey))
 	if err != nil {
 		t.Errorf("read entity error: %s\n", err)
@@ -238,67 +227,23 @@ func TestEncryptFromString(t *testing.T) {
 	if err != nil {
 		t.Errorf("unable to encrypt string: %s ", err)
 	}
-	d := base64.StdEncoding.EncodeToString([]byte(dst.String()))
-	if encryptedString != d {
-		t.Errorf("unable to encrypt string: \n%s\n expecting:\n%s\n ", d, encryptedString)
+	decryptedString := base64.StdEncoding.EncodeToString(dst.Bytes())
+	if len(decryptedString) < 1 {
+		t.Errorf("unable to encrypt string %s got: %s\n ", plaintexString, decryptedString)
 	}
 }
-
-func TestEncrypt(t *testing.T) {
-	fileToEnc := "file.txt"
-	// f, err := os.Open(pubFilename)
-	// if err != nil {
-	// 	t.Errorf("unable to open file: %s %s", pubFilename, err)
-	// }
-	// defer f.Close()
-	// recipient, err := ReadEntity(f)
-	// if err != nil {
-	// 	t.Errorf("read entity error: %s\n", err)
-	// }
-	// pubArmorKey
-	recipient, err := ReadEntity(bytes.NewBufferString(pubArmorKey))
+func TestDecryptString(t *testing.T) {
+	encryptedString := "wYwDJvpFsMUbEcoBBACW0VwBMZmLbKkMAPwyaoXVoqFFoF/2w+9+bxXfu2u9Md6Y2Axw9OUIYsClvnMJ1NyNsju0rb4O09YGIvhr2l3vhwzzNf5TU7rpd+RyH5RVaP4BeX/2sSmGsod/hb9qob2XNwdGv4Ajox1W4PkG+IVNsNtajU4kaZVn7rxiBLttjNLgAeTLaLRRBRrPgGqc04zi0/ZB4ZHK4K3gy+GJGOAi4oerb5LgMOJ3sLeD4Hfg8+Dl5DKMFLPoxv5sBBRHdAjI1XziVNoCWuGFpQA="
+	cipherString, _ := base64.StdEncoding.DecodeString(encryptedString)
+	pass := "2rYiibBZ33f9BMxNE6TEX$H.X4#aPyc2g*(LtRAauiGsn}PJT4{9(J)Xsbe@4Jbr"
+	passphraseByte := []byte(pass)
+	fPriv := bytes.NewBufferString(privArmorKey)
+	entityList, err := ReadArmorKeyring(fPriv)
 	if err != nil {
-		t.Errorf("read entity error: %s\n", err)
-	}
-	f, err := os.Open(fileToEnc)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-
-	dst, err := os.Create(fileToEnc + ".gpg")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer dst.Close()
-	err = Encrypt([]*openpgp.Entity{recipient}, nil, f, dst)
-	if err != nil {
-		t.Errorf("unable to encrypt file:%s err: %s\n", fileToEnc, err)
-	}
-}
-
-func TestDecrypt(t *testing.T) {
-
-	// pubFilename := "alice.asc"
-	fileToDec := "file.txt.gpg"
-	file := "file1.txt"
-	originalFile := "file.txt"
-	passphrase := "2rYiibBZ33f9BMxNE6TEX$H.X4#aPyc2g*(LtRAauiGsn}PJT4{9(J)Xsbe@4Jbr"
-
-	fArmorPriv, err := os.Open(privArmoryFilename)
-	if err != nil {
-		t.Errorf("unable to open file: %s %s", privFilename, err)
-	}
-	defer fArmorPriv.Close()
-	entityList, err := ReadArmorKeyring(fArmorPriv)
-	if err != nil {
-		t.Errorf("unable to ReadArmorKeyring %s", privArmoryFilename)
+		t.Errorf("unable to ReadArmorKeyring %s %#v", fPriv, entityList)
 	}
 
 	entity := entityList[0]
-	passphraseByte := []byte(passphrase)
 	entity.PrivateKey.Decrypt(passphraseByte)
 	for _, subkey := range entity.Subkeys {
 		err := subkey.PrivateKey.Decrypt(passphraseByte)
@@ -306,89 +251,16 @@ func TestDecrypt(t *testing.T) {
 			t.Errorf("unable to decrypt private key: %s", err)
 		}
 	}
-	f, err := os.Open(fileToDec)
-	if err != nil {
-		t.Errorf("unable to open file %s, err: %s", fileToDec, err)
-	}
-	defer f.Close()
 
-	dst, err := os.Create(file)
+	src := bytes.NewBuffer(cipherString)
+	dst := bytes.NewBufferString("")
+	err = Decrypt(src, dst, entityList)
 	if err != nil {
-		t.Errorf("unable to open file %s, err: %s", file, err)
+		t.Errorf("unable to decrypt string err: %s\n", err)
 	}
-	defer dst.Close()
-
-	err = Decrypt(f, dst, entityList)
-	if err != nil {
-		t.Errorf("unable to decrypt file:%s err: %s\n", fileToDec, err)
+	got := dst.String()
+	want := plaintextString
+	if got != want {
+		t.Errorf("asymetric encryption strinfg failed got: %s, want: %s\n", got, want)
 	}
-
-	fOrig, err := os.Open(originalFile)
-	if err != nil {
-		t.Errorf("unable to open file %s, err: %s", originalFile, err)
-	}
-	_, _ = dst.Seek(0, 0)
-	f1, _ := ioutil.ReadAll(fOrig)
-	f2, _ := ioutil.ReadAll(dst)
-	if !bytes.Equal(f1, f2) {
-		t.Errorf("files are not equals %s %s", file, originalFile)
-	}
-
 }
-
-// func TestDecryptString(t *testing.T) {
-
-// 	// pubFilename := "alice.asc"
-// 	fileToDec := "file.txt.gpg"
-// 	file := "file1.txt"
-// 	originalFile := "file.txt"
-// 	passphrase := "2rYiibBZ33f9BMxNE6TEX$H.X4#aPyc2g*(LtRAauiGsn}PJT4{9(J)Xsbe@4Jbr"
-
-// 	fArmorPriv, err := os.Open(privArmoryFilename)
-// 	if err != nil {
-// 		t.Errorf("unable to open file: %s %s", privFilename, err)
-// 	}
-// 	defer fArmorPriv.Close()
-// 	entityList, err := ReadArmorKeyring(fArmorPriv)
-// 	if err != nil {
-// 		t.Errorf("unable to ReadArmorKeyring %s", privArmoryFilename)
-// 	}
-
-// 	entity := entityList[0]
-// 	passphraseByte := []byte(passphrase)
-// 	entity.PrivateKey.Decrypt(passphraseByte)
-// 	for _, subkey := range entity.Subkeys {
-// 		err := subkey.PrivateKey.Decrypt(passphraseByte)
-// 		if err != nil {
-// 			t.Errorf("unable to decrypt private key: %s", err)
-// 		}
-// 	}
-// 	f, err := os.Open(fileToDec)
-// 	if err != nil {
-// 		t.Errorf("unable to open file %s, err: %s", fileToDec, err)
-// 	}
-// 	defer f.Close()
-
-// 	dst, err := os.Create(file)
-// 	if err != nil {
-// 		t.Errorf("unable to open file %s, err: %s", file, err)
-// 	}
-// 	defer dst.Close()
-
-// 	err = Decrypt(f, dst, entityList)
-// 	if err != nil {
-// 		t.Errorf("unable to decrypt file:%s err: %s\n", fileToDec, err)
-// 	}
-
-// 	fOrig, err := os.Open(originalFile)
-// 	if err != nil {
-// 		t.Errorf("unable to open file %s, err: %s", originalFile, err)
-// 	}
-// 	_, _ = dst.Seek(0, 0)
-// 	f1, _ := ioutil.ReadAll(fOrig)
-// 	f2, _ := ioutil.ReadAll(dst)
-// 	if !bytes.Equal(f1, f2) {
-// 		t.Errorf("files are not equals %s %s", file, originalFile)
-// 	}
-
-// }
