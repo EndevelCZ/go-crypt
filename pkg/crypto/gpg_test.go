@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"encoding/base64"
+	"io"
 	"os"
 	"testing"
 
@@ -13,12 +14,104 @@ var (
 	// plaintextFile      = "hello.txt"
 	plaintextString = "hello"
 	// ciphertextFile     = "hello.txt.gpg"
-	ciphertextString   = ""
-	pubFilename        = "alice.asc"
-	privFilename       = "alice-priv.asc"
-	privArmoryFilename = "alice-priv-armor.asc"
-	passphraseString   = "password"
-	pubArmorKey        = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+	ciphertextString       = ""
+	pubFilename            = "alice.asc"
+	privFilename           = "alice-priv.asc"
+	privArmoryFilename     = "alice-priv-armor.asc"
+	passphraseString       = "password"
+	pubArmorKeyAdamPlansky = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
+8aQovQ==
+=uPAR
+-----END PGP PUBLIC KEY BLOCK-----`
+	pubArmorKeyAlice = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
+=ZwzX
+-----END PGP PUBLIC KEY BLOCK-----`
+	pubArmorKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mI0EXKG1jgEEAMoYJ+ID5dww0y8u5eOW28ZuoypreviYVHX7Qq1E6L/42birfqNt
 +A89DcXfAuW2p3NEGqhndbp7M0+g6KBAmbKyXjdq22hH16vdp6hfGd6jxlD7wZM1
@@ -262,5 +355,43 @@ func TestDecryptString(t *testing.T) {
 	want := plaintextString
 	if got != want {
 		t.Errorf("asymetric encryption strinfg failed got: %s, want: %s\n", got, want)
+	}
+}
+
+func TestReadEntities(t *testing.T) {
+	type args struct {
+		r []io.Reader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*openpgp.Entity
+		wantErr bool
+	}{
+		{
+			name: "multiple entities",
+			args: args{
+				r: []io.Reader{
+					bytes.NewBufferString(pubArmorKeyAdamPlansky),
+					bytes.NewBufferString(pubArmorKeyAlice),
+				},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ReadEntities(tt.args.r...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReadEntities() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			for _, entity := range got {
+				if len(entity.Identities) < 1 {
+					t.Errorf("Unable to read pub key to entities")
+				}
+			}
+		})
 	}
 }

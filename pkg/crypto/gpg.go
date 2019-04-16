@@ -16,6 +16,23 @@ func ReadEntity(r io.Reader) (*openpgp.Entity, error) {
 	}
 	return openpgp.ReadEntity(packet.NewReader(block.Body))
 }
+
+func ReadEntities(r ...io.Reader) ([]*openpgp.Entity, error) {
+	entities := []*openpgp.Entity{}
+	for _, rr := range r {
+		block, err := armor.Decode(rr)
+		if err != nil {
+			return nil, err
+		}
+		entity, err := openpgp.ReadEntity(packet.NewReader(block.Body))
+		if err != nil {
+			return nil, err
+		}
+		entities = append(entities, entity)
+	}
+	return entities, nil
+}
+
 func ReadPrivateKey(r io.Reader) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(packet.NewReader(r))
 }
