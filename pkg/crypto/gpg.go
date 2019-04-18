@@ -1,12 +1,28 @@
 package crypto
 
 import (
+	"fmt"
 	"io"
+	"os"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 )
+
+func ReadEntitesFromFiles(filePaths ...string) ([]*openpgp.Entity, error) {
+	pKeys := []io.Reader{}
+	for _, filePath := range filePaths {
+		f, err := os.Open(filePath)
+		if err != nil {
+			panic(fmt.Errorf("unable to open file: %s %s", filePath, err))
+		}
+		pKeys = append(pKeys, f)
+		defer f.Close()
+	}
+	// entities, err := ReadEntities(pKeys...)
+	return ReadEntities(pKeys...)
+}
 
 // ReadEntity reads pub armored key
 func ReadEntity(r io.Reader) (*openpgp.Entity, error) {
@@ -42,6 +58,23 @@ func ReadKeyring(r io.Reader) (openpgp.EntityList, error) {
 func ReadArmorKeyring(r io.Reader) (openpgp.EntityList, error) {
 	return openpgp.ReadArmoredKeyRing(r)
 }
+
+// func EncryptFileToGcs(recip []*openpgp.Entity, wcGcs io.WriteCloser) error {
+// 	wc, err := openpgp.Encrypt(w, recip, signer, &openpgp.FileHints{IsBinary: true}, nil)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// src, err := os.Open(filePath)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+
+// 	// err = Encrypt(recip, nil, src, wcGcs)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+// 	// return nil
+// }
 
 func Encrypt(recip []*openpgp.Entity, signer *openpgp.Entity, r io.Reader, w io.Writer) error {
 	wc, err := openpgp.Encrypt(w, recip, signer, &openpgp.FileHints{IsBinary: true}, nil)

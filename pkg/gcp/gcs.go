@@ -42,6 +42,7 @@ type Gcs interface {
 	DownloadObject(w io.Writer, objectName string) error
 	UploadObject(r io.Reader, objectName string) error
 	ListObjects(w io.Writer) error
+	UploadObjectWriter(objectName string) io.WriteCloser
 }
 
 type gcs struct {
@@ -56,6 +57,11 @@ func NewClient(client stiface.Client, bucketName string, ctx context.Context) Gc
 		bucketName: bucketName,
 		ctx:        ctx,
 	}
+}
+
+func (gcs *gcs) UploadObjectWriter(objectName string) io.WriteCloser {
+	wc := gcs.client.Bucket(gcs.bucketName).Object(objectName).NewWriter(gcs.ctx)
+	return wc
 }
 
 // UploadObject upload io.Reader to gcs with objectName
