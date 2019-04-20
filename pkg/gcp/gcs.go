@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"google.golang.org/api/iterator"
@@ -43,6 +46,7 @@ type Gcs interface {
 	UploadObject(r io.Reader, objectName string) error
 	ListObjects(w io.Writer) error
 	UploadObjectWriter(objectName string) io.WriteCloser
+	UploadEncyptObject(r io.Reader, objectName string, fn encryptFn, recip ...io.Reader) error
 }
 
 type gcs struct {
@@ -62,6 +66,26 @@ func NewClient(client stiface.Client, bucketName string, ctx context.Context) Gc
 func (gcs *gcs) UploadObjectWriter(objectName string) io.WriteCloser {
 	wc := gcs.client.Bucket(gcs.bucketName).Object(objectName).NewWriter(gcs.ctx)
 	return wc
+}
+
+type encryptFn func(w io.Writer, recip ...io.Reader) (io.WriteCloser, error)
+
+func (gcs *gcs) UploadEncyptObject(r io.Reader, objectName string, fn encryptFn, recip ...io.Reader) error {
+	w := gcs.client.Bucket(gcs.bucketName).Object(objectName).NewWriter(gcs.ctx)
+	defer w.Close()
+	wc, err := fn(w, recip...)
+	if err != nil {
+		return err
+	}
+	defer wc.Close()
+	if _, err := io.Copy(wc, r); err != nil {
+		return fmt.Errorf("unable to copy encrypted bytes to gcs: %s ", err)
+	}
+	if err := wc.Close(); err != nil {
+		return fmt.Errorf("unable to close gcs file: %s ", err)
+	}
+	logrus.Infof("UploadEncyptObject: %s %s\n", objectName, time.Now())
+	return nil
 }
 
 // UploadObject upload io.Reader to gcs with objectName

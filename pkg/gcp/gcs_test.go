@@ -265,3 +265,53 @@ func (w *fakeWriter) Close() error {
 	bkt.objects[w.obj.name] = w.buf.Bytes()
 	return nil
 }
+
+// func Test_gcs_UploadEncyptObject(t *testing.T) {
+// 	type fields struct {
+// 		client     stiface.Client
+// 		bucketName string
+// 		ctx        context.Context
+// 	}
+// 	type args struct {
+// 		r          io.Reader
+// 		objectName string
+// 		fn         encryptFn
+// 		recip      []string
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		fields  fields
+// 		args    args
+// 		wantErr bool
+// 	}{
+// 		{
+// 			name: "hello",
+// 			field: field{
+// 				client:     newFakeClient(),
+// 				bucketName: "cterminal-store-wallets",
+// 				ctx:        context.Background(),
+// 			},
+// 			args: args{
+// 				r:          bytes.NewBufferString("hello world"),
+// 				objectName: "helloWorld.txt",
+// 				fn:         func(w io.Writer, recip ...string) (io.WriteCloser, error) {
+// 					bytes.New
+// 				},
+// 				recip:      nil,
+// 			},
+// 			wantErr: true,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			gcs := &gcs{
+// 				client:     tt.fields.client,
+// 				bucketName: tt.fields.bucketName,
+// 				ctx:        tt.fields.ctx,
+// 			}
+// 			if err := gcs.UploadEncyptObject(tt.args.r, tt.args.objectName, tt.args.fn, tt.args.recip...); (err != nil) != tt.wantErr {
+// 				t.Errorf("gcs.UploadEncyptObject() error = %v, wantErr %v", err, tt.wantErr)
+// 			}
+// 		})
+// 	}
+// }

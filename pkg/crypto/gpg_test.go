@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io"
-	"os"
 	"testing"
 
 	"golang.org/x/crypto/openpgp"
@@ -14,9 +13,9 @@ var (
 	// plaintextFile      = "hello.txt"
 	plaintextString = "hello"
 	// ciphertextFile     = "hello.txt.gpg"
-	ciphertextString       = ""
-	pubFilename            = "alice.asc"
-	privFilename           = "alice-priv.asc"
+	ciphertextString = ""
+	pubFilename      = "alice.asc"
+	// privFilename           = "alice-priv.asc"
 	privArmoryFilename     = "alice-priv-armor.asc"
 	passphraseString       = "password"
 	pubArmorKeyAdamPlansky = `-----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -269,32 +268,28 @@ func TestGpgDecryptStringSymetric(t *testing.T) {
 }
 
 func TestReadEntity(t *testing.T) {
-	f, err := os.Open(pubFilename)
-	if err != nil {
-		t.Errorf("unable to open file: %s %s", pubFilename, err)
-	}
-	defer f.Close()
-	_, err = ReadEntity(f)
+	b := bytes.NewBufferString(pubArmorKeyAlice)
+	_, err := ReadEntity(b)
 	if err != nil {
 		t.Errorf("read entity error: %s\n", err)
 	}
 }
 
-func TestReadKeyring(t *testing.T) {
-	fPriv, err := os.Open(privFilename)
-	if err != nil {
-		t.Errorf("unable to open file: %s %s", privFilename, err)
-	}
-	defer fPriv.Close()
-	entityList, err := ReadKeyring(fPriv)
-	if err != nil {
-		t.Errorf("unable to ReadKeyring %s %#v", privFilename, entityList)
-	}
-	entity := entityList[0].Identities["alice@cterminal.cz (aliec) <alice@cterminal.cz>"]
-	if entity.UserId.Comment != "aliec" {
-		t.Errorf("entity doesn't exist %#v \n", entity)
-	}
-}
+// func TestReadKeyring(t *testing.T) {
+// 	fPriv, err := os.Open(privFilename)
+// 	if err != nil {
+// 		t.Errorf("unable to open file: %s %s", privFilename, err)
+// 	}
+// 	defer fPriv.Close()
+// 	entityList, err := ReadKeyring(fPriv)
+// 	if err != nil {
+// 		t.Errorf("unable to ReadKeyring %s %#v", privFilename, entityList)
+// 	}
+// 	entity := entityList[0].Identities["alice@cterminal.cz (aliec) <alice@cterminal.cz>"]
+// 	if entity.UserId.Comment != "aliec" {
+// 		t.Errorf("entity doesn't exist %#v \n", entity)
+// 	}
+// }
 
 func TestReadKeyringFromString(t *testing.T) {
 	fPriv := bytes.NewBufferString(privArmorKey)

@@ -59,6 +59,18 @@ func ReadArmorKeyring(r io.Reader) (openpgp.EntityList, error) {
 	return openpgp.ReadArmoredKeyRing(r)
 }
 
+func EncryptFn(w io.Writer, pubKeys ...io.Reader) (io.WriteCloser, error) {
+	entities, err := ReadEntities(pubKeys...)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read pubkeys from file %s", err)
+	}
+	wc, err := openpgp.Encrypt(w, entities, nil, &openpgp.FileHints{IsBinary: true}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encrypt wc: %s ", err)
+	}
+	return wc, nil
+}
+
 // func EncryptFileToGcs(recip []*openpgp.Entity, wcGcs io.WriteCloser) error {
 // 	wc, err := openpgp.Encrypt(w, recip, signer, &openpgp.FileHints{IsBinary: true}, nil)
 // 	if err != nil {
